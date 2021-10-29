@@ -7,7 +7,7 @@
 using namespace std;
 
 //Helper functons
-extern void breakdownLine(string, map<string, string>, map<string, string*>);
+extern string breakdownLine(string, map<string, string>, map<string, string*>);
 extern string header(string);
 extern string text(string, map<string, string>, map<string, string*>);
 extern string modification(string, string);
@@ -99,6 +99,7 @@ int main( int argc, char *argv[] ){
     }
     
     ifstream obj;
+    ofstream outfile ("output.lst");
     string line;
     obj.open (argv[1]);
     
@@ -117,8 +118,9 @@ int main( int argc, char *argv[] ){
     }*/
 
     while(getline(obj, line))
-        breakdownLine(line, symbols, lits);
+        outfile << breakdownLine(line, symbols, lits);
 
+    outfile.close();
     obj.close();
     return 0;
 }
@@ -132,7 +134,7 @@ Description:    Depending on the content of the entered argu
 
 Output:         A generated text file that will have disa
 */
-void breakdownLine(string line, map<string, string> symbols, map<string, string*> lits){
+string breakdownLine(string line, map<string, string> symbols, map<string, string*> lits){
     // header record type
     string s;
 
@@ -153,7 +155,7 @@ void breakdownLine(string line, map<string, string> symbols, map<string, string*
     }
     else {cout << "Error reading line: " << line << endl; s = "";}
 
-    cout << s;
+    return s;
 }
 
 
