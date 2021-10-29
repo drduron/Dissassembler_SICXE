@@ -20,6 +20,7 @@ extern string decToHex(int);
 extern string hexToBin(char);
 extern string binToHex(string);
 extern string fourHex(string);
+extern int negHex(string);
 
 // op code for the corresponding mnemonic
 map<string, string> OPS = {
@@ -293,7 +294,8 @@ string text(string line, map<string, string> symbols, map<string, string*> lits)
                 else{
                     format = 3;
                     for (int i = ptr+3; i < 6; i++){
-
+                        c = line[i];
+                        disp.append(c);
                     }
                 }
             }
@@ -575,6 +577,17 @@ string fourHex(string hex){
     }
 
     return hex;
+}
+
+int negHex(string hex){
+    string bin;
+    for(int i = 0; i < hex.length(); i++){
+        bin = hexToBin(hex[i]);
+        if (bin[i] == '0')  bin[i] = '1';
+        else                bin[i] = '0';
+    }
+    int val = 0-(hexToDec(binToHex(bin)) + 1);
+    return val;
 }
 
 //EOF
