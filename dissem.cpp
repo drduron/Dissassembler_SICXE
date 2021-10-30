@@ -21,6 +21,7 @@ extern string hexToBin(char);
 extern string binToHex(string);
 extern string fourHex(string);
 extern int negHex(string);
+extern string subHex(string, int);
 
 // op code for the corresponding mnemonic
 map<string, string> OPS = {
@@ -41,6 +42,9 @@ map<string, string> OPS_2 = {
 {"AC", "RMO"}, {"A4", "SHIFTL"}, {"A8", "SHIFTR"}, {"94", "SUBR"}, {"B0", "SVC"},
 {"B8", "TIXR"}
 };
+
+map<char, int> registers;
+// A, X, L, B, S, T, F are all registers to hold
 /*
 const static string OPS[] = {
 "18", "58", "40", "28",
@@ -232,12 +236,10 @@ string text(string line, map<string, string> symbols, map<string, string*> lits)
         }
         //not in any of the maps so 
         else{
-            if (symbols.find(addr) != symbols.end()){
-                name = symbols[addr];
-            }
-            else{
-                name = "\t";
-            }
+            if (symbols.find(addr) != symbols.end())
+                    name = symbols[addr];
+            else    name = "\t";
+
             // name & addr is now assigned by this point
             c = line[ptr];
             bin.append(c);
@@ -281,6 +283,7 @@ string text(string line, map<string, string> symbols, map<string, string*> lits)
                     }
                     // check if indexed
                     if (addressing_type == 2){
+                        val = subHex(disp,registers['X']);
                         //TA - (X)
                     }
                     // check if its a constant
@@ -303,7 +306,8 @@ string text(string line, map<string, string> symbols, map<string, string*> lits)
             }
             
         }
-
+        addr = addHex(addr,decToHex(format));
+        ptr += (format*2);
     }
 
     return output;
@@ -428,6 +432,7 @@ map<string, string*> addLiterals(map<string, string*> lit, string sym){
             lit[hex_address] = arr;
             
         }
+        
     }
 
     file.close();
@@ -583,13 +588,31 @@ string fourHex(string hex){
 
 int negHex(string hex){
     string bin;
+    string hex2;
+    bool neg = false;
     for(int i = 0; i < hex.length(); i++){
         bin = hexToBin(hex[i]);
-        if (bin[i] == '0')  bin[i] = '1';
-        else                bin[i] = '0';
+        if (i == 0 && bin[0] == '1') neg = true;
+        if (neg){
+            for (int j = 0; j < 4; j++){
+                if (bin[i] == '0')  bin[i] = '1';
+                else                bin[i] = '0';
+            }
+        }
+        // bin now = hex of 
+        hex2.append(binToHex(bin));
     }
-    int val = 0-(hexToDec(binToHex(bin)) + 1);
-    return val;
+
+    if (neg)    return (0-(hexToDec(hex2))+1);
+    else        return hexToDec(hex2);
+}
+
+string subHex(string hex, int val){
+    string output;
+    val = hexToDec(hex) - val;
+    output = decToHex(val);
+
+    return output;
 }
 
 //EOF
