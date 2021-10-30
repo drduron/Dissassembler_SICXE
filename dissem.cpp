@@ -179,8 +179,8 @@ string header(string line){
         c = line[i];
         header_address.append(c);
     }
-
-    string output = header_address + "\t" + name + "\tSTART\t" + header_address + "\n";
+    
+    string output = header_address + "\t" + name + "\tSTART\t" + to_string(hexToDec(header_address)) + "\n";
     registers['P'] = header_address;
 
     return output;
