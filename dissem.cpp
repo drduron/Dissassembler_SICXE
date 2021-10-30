@@ -43,7 +43,7 @@ map<string, string> OPS_2 = {
 {"B8", "TIXR"}
 };
 
-map<char, int> registers;
+map<char, string> registers;
 // A, X, L, B, S, T, F are all registers to hold
 /*
 const static string OPS[] = {
@@ -103,7 +103,7 @@ int main( int argc, char *argv[] ){
     }
     
     ifstream obj;
-    ofstream outfile ("output.lst");
+    ofstream outfile ("out.lst");
     string line;
     obj.open (argv[1]);
     
@@ -180,6 +180,7 @@ string header(string line){
     }
 
     string output = header_address + "\t" + name + "\tSTART\t" + header_address + "\n";
+    registers['P'] = header_address;
 
     return output;
 }
@@ -218,6 +219,8 @@ string text(string line, map<string, string> symbols, map<string, string*> lits)
         operation = "";
         val = "";
         object = "";
+        bin = "";
+        disp = "";
 
         // check if the address is in any of the map
         if (lits.find(addr) != lits.end()){
@@ -291,7 +294,7 @@ string text(string line, map<string, string> symbols, map<string, string*> lits)
                     }
                     // check if indexed
                     if (addressing_type == 2){
-                        val = OPS[fourHex(subHex(disp,registers['X']))];
+                        val = OPS[fourHex(subHex(disp,hexToDec(registers['X'])))];
                         val.append(",X");
                         //TA - (X)
                     }
@@ -324,8 +327,38 @@ string text(string line, map<string, string> symbols, map<string, string*> lits)
                         c = line[i];
                         disp.append(c);
                     }
-                    
-                    
+
+                    if (addressing_type == 3) val.append("@");
+                    else if (addressing_type == 4) val.append("#");
+
+                    // check whether pc or base
+                    bin = hexToBin(line[2]);
+                    for (int i = ptr+3; i < ptr+6; i++){
+                        c = line[i];
+                        disp.append(c);
+                    }
+                    cout << disp << endl;
+                    disp = fourHex(disp);
+                    // check if base
+                    if(bin[1] == '1'){
+                        cout << "here" << endl;
+                    }
+                    // will be pc if not base
+                    else{
+                        cout << addHex(disp, addHex(disp, "3")) << endl;
+                        val = symbols[fourHex(addHex(disp, addHex(addr,"3")))];
+                        cout << val << endl;
+                    }
+                    if(addressing_type == 3){
+                        val = "@" + val;
+                    }
+                    else if (addressing_type == 4){
+                        val = "#" + val;
+                    }
+                    for(int i = ptr; i < ptr+6; i++){
+                        c = line[i];
+                        object.append(c);
+                    }
                 }
             }
             output.append(addr+"\t"+name+"\t"+operation+"\t"+val+"\t"+object+"\n");
@@ -336,15 +369,16 @@ string text(string line, map<string, string> symbols, map<string, string*> lits)
                     c = val[i];
                     object.append(c);
                 }
-                output.append("\t\t\tBASE\t"+object+"\n");
+                output.append("\t\t\t\tBASE\t"+object+"\n");
+                registers['B'] = addr;
             }
             
         }
         
         addr = fourHex(addHex(addr,decToHex(format)));
+        registers['P'] = addr;
         cout << addr << endl;
         ptr += (format*2);
-        cout << line[ptr] << " " << ptr << endl;
     }
 
     return output;
