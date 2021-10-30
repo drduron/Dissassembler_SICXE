@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <map>
+#include <queue>
 #include <stdio.h>
 #include <math.h>
 
@@ -203,6 +204,7 @@ string text(string line, map<string, string> symbols, map<string, string*> lits)
     int length;
     char n;
     char i_bit;
+    string *arr;
 
     // get starting address
     for (; ptr < 7; ptr++){
@@ -211,6 +213,19 @@ string text(string line, map<string, string> symbols, map<string, string*> lits)
     }
     ptr += 2;
 
+    cout << "record starting address: " + addr + " PC: " + registers['P'] << endl;
+
+    // get a queue of symbols that appear between PC and beginning of text record
+    /*
+    queue<string> q;
+    while (addr != registers['P']){
+        for ( auto const& it : lits){
+            if (hexToDec(registers['P']) <= hexToDec(it.first) < hexToDec(addr)){
+                q.push(it.first);
+            }
+        }
+    }
+    */
     
     //continue until the entire text file is read
     while(ptr < line.length()){
@@ -221,11 +236,15 @@ string text(string line, map<string, string> symbols, map<string, string*> lits)
         object = "";
         bin = "";
         disp = "";
+        
 
         // check if the address is in any of the map
         if (lits.find(addr) != lits.end()){
-            name = lits[addr][0];
-            val = lits[addr][1];
+            arr = lits[addr];
+
+            name = arr[0];
+            val = arr[1];
+            
             // go through operation to find out the length of address change
             for (int i = 0; i < val.length(); i++){
                 if (val[i] == '\''){
@@ -243,7 +262,7 @@ string text(string line, map<string, string> symbols, map<string, string*> lits)
             // now have object code and length to change addr by
             output = addr + "\t" + name + "\t" + operation + "\t" + val + "\t" + object + "\n";
         }
-        //not in any of the maps so 
+        //not in lits map
         else{
             if (symbols.find(addr) != symbols.end()){
                 name = symbols[addr];
@@ -264,6 +283,10 @@ string text(string line, map<string, string> symbols, map<string, string*> lits)
             if (OPS_2.find(bin) != OPS_2.end()){
                 operation = OPS_2[bin];
                 format = 2;
+                for(int i = ptr; i < ptr+4; i++){
+                    c = line[i];
+                    object.append(c);
+                }
             }
             else{
                 // check the e bit, if 1 format 4, otherwise format 3
@@ -337,17 +360,13 @@ string text(string line, map<string, string> symbols, map<string, string*> lits)
                         c = line[i];
                         disp.append(c);
                     }
-                    cout << disp << endl;
                     disp = fourHex(disp);
                     // check if base
                     if(bin[1] == '1'){
-                        cout << "here" << endl;
                     }
                     // will be pc if not base
                     else{
-                        cout << addHex(disp, addHex(disp, "3")) << endl;
                         val = symbols[fourHex(addHex(disp, addHex(addr,"3")))];
-                        cout << val << endl;
                     }
                     if(addressing_type == 3){
                         val = "@" + val;
@@ -375,9 +394,9 @@ string text(string line, map<string, string> symbols, map<string, string*> lits)
             
         }
         
+        cout << addr << " " << operation << endl;
         addr = fourHex(addHex(addr,decToHex(format)));
         registers['P'] = addr;
-        cout << addr << endl;
         ptr += (format*2);
     }
 
@@ -448,7 +467,7 @@ map<string, string*> addLiterals(map<string, string*> lit, string sym){
     string name;
     string hex_address;
     string lit_s;
-    string arr[2]; 
+    string *arr = new string[2];
 
     while(getline(file, line)){
         if (line[0] == '-'){
@@ -496,12 +515,12 @@ map<string, string*> addLiterals(map<string, string*> lit, string sym){
                 hex_address.append(c);
                 i++;
             }
-            // cout << hex_address << ": " << name << " " << lit_s << endl;
+            //cout << hex_address << ": " << name << " " << lit_s << endl;
+            string x(*arr);
             arr[0] = name;
             arr[1] = lit_s;
 
             lit[hex_address] = arr;
-            
         }
         
     }
