@@ -1,5 +1,5 @@
 0000 Assign  START   0                         
-0000 FIRST   +LDB    #RETADR       691002C6    
+0000 FIRST   +LDB    #RETADR       691002C6   
              BASE    RETADR                    
 0004         STL     RETADR        1722BF      
 0007         LDA     @RETADR       0222BC      

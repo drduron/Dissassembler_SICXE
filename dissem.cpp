@@ -147,7 +147,7 @@ string breakdownLine(string line, map<string, string> symbols, map<string, strin
     }
     // text record type
     else if (line[0] == 'T'){
-        //s.append(text(line, symbols, lits));
+        s.append(text(line, symbols, lits));
     }
     // modification record type
     else if (line[0] == 'M'){
@@ -213,8 +213,13 @@ string text(string line, map<string, string> symbols, map<string, string*> lits)
     
     //continue until the entire text file is read
     while(ptr < line.length()){
-        // check if the address is in any of the maps
-        
+        // reset the vars so they are empty strings and can be easily appended
+        name = "";
+        operation = "";
+        val = "";
+        object = "";
+
+        // check if the address is in any of the map
         if (lits.find(addr) != lits.end()){
             name = lits[addr][0];
             val = lits[addr][1];
@@ -230,14 +235,16 @@ string text(string line, map<string, string> symbols, map<string, string*> lits)
                 object.append(c);
             }
             length = (val.length() - length - 2)/2;
+            format = length;
             operation = "BYTE";
             // now have object code and length to change addr by
             output = addr + "\t" + name + "\t" + operation + "\t" + val + "\t" + object + "\n";
         }
         //not in any of the maps so 
         else{
-            if (symbols.find(addr) != symbols.end())
-                    name = symbols[addr];
+            if (symbols.find(addr) != symbols.end()){
+                name = symbols[addr];
+            }
             else    name = "\t";
 
             // name & addr is now assigned by this point
@@ -277,23 +284,38 @@ string text(string line, map<string, string> symbols, map<string, string*> lits)
                 else if (n == '0' && i_bit == '1')  addressing_type = 4;
                 if (bin[3] == '1'){
                     format = 4;
-                    for (int i = ptr+3; i < 8; i++){
+                    // even though its 5 bytes, we only use the right 4 tbh
+                    for (int i = ptr+4; i < ptr+8; i++){
                         c = line[i];
                         disp.append(c);
                     }
                     // check if indexed
                     if (addressing_type == 2){
-                        val = subHex(disp,registers['X']);
+                        val = OPS[fourHex(subHex(disp,registers['X']))];
+                        val.append(",X");
                         //TA - (X)
                     }
                     // check if its a constant
                     else if (symbols.find(disp) == symbols.end()){
                         // gets rid of the extra numbers/0's
-                        val = decToHex(hexToDec(disp));
+                        val = "#"+decToHex(hexToDec(disp));
+                    }
+                    else if (addressing_type == 4){
+                        val = "#"+symbols[disp];
                     }
                     // do regular direct addressing
                     else{
                         val = symbols[disp];
+                        if (addressing_type == 3){
+                            val = "@" + val;
+                        }
+                        else if(addressing_type == 4){
+                            val = "#" + val;
+                        }
+                    }
+                    for (int i = ptr; i < ptr+8; i++){
+                        c = line[i];
+                        object.append(c);
                     }
                 }
                 else{
@@ -302,12 +324,27 @@ string text(string line, map<string, string> symbols, map<string, string*> lits)
                         c = line[i];
                         disp.append(c);
                     }
+                    
+                    
                 }
+            }
+            output.append(addr+"\t"+name+"\t"+operation+"\t"+val+"\t"+object+"\n");
+            //special cases
+            if(operation == "LDB"){
+                object = "";
+                for (int i = 1; i < val.length(); i++){
+                    c = val[i];
+                    object.append(c);
+                }
+                output.append("\t\t\tBASE\t"+object+"\n");
             }
             
         }
-        addr = addHex(addr,decToHex(format));
+        
+        addr = fourHex(addHex(addr,decToHex(format)));
+        cout << addr << endl;
         ptr += (format*2);
+        cout << line[ptr] << " " << ptr << endl;
     }
 
     return output;
@@ -456,11 +493,11 @@ string addHex(string operand1, string operand2){
     int op1 = hexToDec(operand1);
     int op2 = hexToDec(operand2);
 
-    cout << op1 << " " << op2 << endl;
+    //cout << op1 << " " << op2 << endl;
 
     op1 = op1 + op2;
 
-    cout << op1 << endl;
+    //cout << op1 << endl;
 
     return decToHex(op1);
 }
