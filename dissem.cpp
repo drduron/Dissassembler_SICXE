@@ -12,7 +12,7 @@ extern string breakdownLine(string, map<string, string>, map<string, string*>);
 extern string header(string);
 extern string text(string, map<string, string>, map<string, string*>);
 extern string modification(string, string);
-extern string end(string, string);
+extern string end(string, map<string, string>);
 extern map<string, string> addSymbols(map<string, string>, string);
 extern map<string, string*> addLiterals(map<string, string*>, string);
 extern string addHex(string, string);
@@ -45,6 +45,10 @@ map<string, string> OPS_2 = {
 };
 
 map<char, string> registers;
+map<string, string> lits_name;
+map<string, string> lits_val;
+string start;
+string record_len;
 // A, X, L, B, S, T, F are all registers to hold
 /*
 const static string OPS[] = {
@@ -156,7 +160,7 @@ string breakdownLine(string line, map<string, string> symbols, map<string, strin
     }
     // end record type
     else if (line[0] == 'E'){
-        //s = end(line, sym);
+        s = end(line, symbols);
     }
     else {cout << "Error reading line: " << line << endl; s = "";}
 
@@ -179,9 +183,14 @@ string header(string line){
         c = line[i];
         header_address.append(c);
     }
+    for (int i = 15; i < line.length(); i++){
+        c = line[i];
+        record_len.append(c);
+    }
     
     string output = header_address + "\t" + name + "\tSTART\t" + to_string(hexToDec(header_address)) + "\n";
     registers['P'] = header_address;
+    start = name;
 
     return output;
 }
@@ -216,16 +225,35 @@ string text(string line, map<string, string> symbols, map<string, string*> lits)
     cout << "record starting address: " + addr + " PC: " + registers['P'] << endl;
 
     // get a queue of symbols that appear between PC and beginning of text record
-    /*
     queue<string> q;
-    while (addr != registers['P']){
-        for ( auto const& it : lits){
-            if (hexToDec(registers['P']) <= hexToDec(it.first) < hexToDec(addr)){
+    string temp_addr;
+    if(addr != registers['P']){
+        for(auto const& it: symbols){
+            if(hexToDec(registers['P']) <= hexToDec(it.first) && hexToDec(it.first) < hexToDec(addr)){
                 q.push(it.first);
             }
         }
+        q.pop();
+        while(q.size() > 0){
+            //PC has the address we want to use to find in symbols
+            name = symbols[registers['P']];
+            //we want to find the difference between PC and the next address in symbols
+            if(q.size() == 0)   temp_addr = addr;
+            else{
+                temp_addr = q.front();
+                q.pop();
+            }
+            val = subHex(temp_addr,hexToDec(registers['P']));
+            cout << registers['P'] << " " << name << endl;
+            output.append(registers['P']+"\t"+name+"\tRESB\t"+to_string(hexToDec(val))+"\n");
+            registers['P'] = temp_addr;
+        }
+        cout << registers['P'] << endl;
+        name = symbols[registers['P']];
+        val = subHex(addr, hexToDec(registers['P']));
+        output.append(registers['P']+"\t"+name+"\tRESB\t"+to_string(hexToDec(val))+"\n");
+        registers['P'] = addr;
     }
-    */
     
     //continue until the entire text file is read
     while(ptr < line.length()){
@@ -239,11 +267,9 @@ string text(string line, map<string, string> symbols, map<string, string*> lits)
         
 
         // check if the address is in any of the map
-        if (lits.find(addr) != lits.end()){
-            arr = lits[addr];
-
-            name = arr[0];
-            val = arr[1];
+        if (lits_name.find(addr) != lits_name.end()){
+            name = lits_name[addr];
+            val = lits_val[addr];
             
             // go through operation to find out the length of address change
             for (int i = 0; i < val.length(); i++){
@@ -259,8 +285,12 @@ string text(string line, map<string, string> symbols, map<string, string*> lits)
             length = (val.length() - length - 2)/2;
             format = length;
             operation = "BYTE";
+            if (lits_name[addr].empty()){
+                operation = "*";
+                output.append("\t\t\t\tLTORG\n");
+            }
             // now have object code and length to change addr by
-            output = addr + "\t" + name + "\t" + operation + "\t" + val + "\t" + object + "\n";
+            output.append(addr + "\t" + name + "\t" + operation + "\t" + val + "\t" + object + "\n");
         }
         //not in lits map
         else{
@@ -287,6 +317,9 @@ string text(string line, map<string, string> symbols, map<string, string*> lits)
                     c = line[i];
                     object.append(c);
                 }
+                // get the val
+                val = "\t";
+                
             }
             else{
                 // check the e bit, if 1 format 4, otherwise format 3
@@ -310,6 +343,7 @@ string text(string line, map<string, string> symbols, map<string, string*> lits)
                 else if (n == '0' && i_bit == '1')  addressing_type = 4;
                 if (bin[3] == '1'){
                     format = 4;
+                    operation = "+"+operation;
                     // even though its 5 bytes, we only use the right 4 tbh
                     for (int i = ptr+4; i < ptr+8; i++){
                         c = line[i];
@@ -322,12 +356,13 @@ string text(string line, map<string, string> symbols, map<string, string*> lits)
                         //TA - (X)
                     }
                     // check if its a constant
-                    else if (symbols.find(disp) == symbols.end()){
-                        // gets rid of the extra numbers/0's
-                        val = "#"+decToHex(hexToDec(disp));
+                    else if (symbols.find(disp) != symbols.end()){
+                        val = "#"+symbols[disp];
+                        
                     }
                     else if (addressing_type == 4){
-                        val = "#"+symbols[disp];
+                        // gets rid of the extra numbers/0's
+                        val = "#"+to_string(hexToDec(disp));
                     }
                     // do regular direct addressing
                     else{
@@ -346,27 +381,29 @@ string text(string line, map<string, string> symbols, map<string, string*> lits)
                 }
                 else{
                     format = 3;
-                    for (int i = ptr+3; i < 6; i++){
-                        c = line[i];
-                        disp.append(c);
-                    }
-
-                    if (addressing_type == 3) val.append("@");
-                    else if (addressing_type == 4) val.append("#");
-
-                    // check whether pc or base
-                    bin = hexToBin(line[2]);
                     for (int i = ptr+3; i < ptr+6; i++){
                         c = line[i];
                         disp.append(c);
                     }
                     disp = fourHex(disp);
+
+                    // check whether pc or base
+                    bin = hexToBin(line[2]);
                     // check if base
                     if(bin[1] == '1'){
+                        cout << "base" << endl;
                     }
                     // will be pc if not base
                     else{
-                        val = symbols[fourHex(addHex(disp, addHex(addr,"3")))];
+                        val = fourHex(addHex(disp, addHex(addr,to_string(format))));
+                        cout << disp << " " << addr << " " << addHex(addr, to_string(format)) << endl;
+                        if(symbols.find(val) != symbols.end()){
+                            val = symbols[val];
+                        }
+                        else{
+                            val = to_string(hexToDec(disp));
+                        }
+
                     }
                     if(addressing_type == 3){
                         val = "@" + val;
@@ -380,9 +417,10 @@ string text(string line, map<string, string> symbols, map<string, string*> lits)
                     }
                 }
             }
+            cout << addr << " " <<operation<<" "<<val<<" "<< object << endl;
             output.append(addr+"\t"+name+"\t"+operation+"\t"+val+"\t"+object+"\n");
             //special cases
-            if(operation == "LDB"){
+            if(operation == "LDB" || operation == "+LDB"){
                 object = "";
                 for (int i = 1; i < val.length(); i++){
                     c = val[i];
@@ -394,12 +432,51 @@ string text(string line, map<string, string> symbols, map<string, string*> lits)
             
         }
         
-        cout << addr << " " << operation << endl;
         addr = fourHex(addHex(addr,decToHex(format)));
         registers['P'] = addr;
         ptr += (format*2);
     }
 
+    return output;
+}
+
+string end(string line, map<string, string> symbols){
+    string addr = record_len;
+    string name;
+    string val;
+    string output;
+
+    // get a queue of symbols that appear between PC and beginning of text record
+    queue<string> q;
+    string temp_addr;
+    if(addr != registers['P']){
+        for(auto const& it: symbols){
+            if(hexToDec(registers['P']) <= hexToDec(it.first) && hexToDec(it.first) < hexToDec(addr)){
+                q.push(it.first);
+            }
+        }
+        q.pop();
+        while(q.size() > 0){
+            //PC has the address we want to use to find in symbols
+            name = symbols[registers['P']];
+            //we want to find the difference between PC and the next address in symbols
+            if(q.size() == 0)   temp_addr = addr;
+            else{
+                temp_addr = q.front();
+                q.pop();
+            }
+            val = subHex(temp_addr,hexToDec(registers['P']));
+            cout << registers['P'] << " " << name << endl;
+            output.append(registers['P']+"\t"+name+"\tRESB\t"+to_string(hexToDec(val))+"\n");
+            registers['P'] = temp_addr;
+        }
+        cout << registers['P'] << endl;
+        name = symbols[registers['P']];
+        val = subHex(addr, hexToDec(registers['P']));
+        output.append(registers['P']+"\t"+name+"\tRESB\t"+to_string(hexToDec(val))+"\n");
+        registers['P'] = addr;
+    }
+    output.append("\t\t\t\tEND\t"+start);
     return output;
 }
 
@@ -470,6 +547,7 @@ map<string, string*> addLiterals(map<string, string*> lit, string sym){
     string *arr = new string[2];
 
     while(getline(file, line)){
+
         if (line[0] == '-'){
             count++;
         }
@@ -515,7 +593,11 @@ map<string, string*> addLiterals(map<string, string*> lit, string sym){
                 hex_address.append(c);
                 i++;
             }
-            //cout << hex_address << ": " << name << " " << lit_s << endl;
+
+            
+            cout << hex_address << ": " << name << " " << lit_s << endl;
+            lits_name[hex_address] = name;
+            lits_val[hex_address] = lit_s;
             string x(*arr);
             arr[0] = name;
             arr[1] = lit_s;
