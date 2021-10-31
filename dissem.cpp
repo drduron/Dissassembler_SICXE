@@ -23,6 +23,7 @@ extern string binToHex(string);
 extern string fourHex(string);
 extern int negHex(string);
 extern string subHex(string, int);
+extern string addHex2(string, string);
 
 // op code for the corresponding mnemonic
 map<string, string> OPS = {
@@ -206,6 +207,7 @@ string text(string line, map<string, string> symbols, map<string, string*> lits)
     string val;
     string c;
     string disp;
+    string target_address;
     bool x;
     int addressing_type;
     int ptr = 3;
@@ -360,6 +362,12 @@ string text(string line, map<string, string> symbols, map<string, string*> lits)
                         val = "#"+symbols[disp];
                         
                     }
+                    else if (lits_name.find(disp) != lits_name.end()){
+                        val = lits_name[disp];
+                        if (lits_name[disp].empty()){
+                            val = lits_val[disp];
+                        }
+                    }
                     else if (addressing_type == 4){
                         // gets rid of the extra numbers/0's
                         val = "#"+to_string(hexToDec(disp));
@@ -392,18 +400,38 @@ string text(string line, map<string, string> symbols, map<string, string*> lits)
                     // check if base
                     if(bin[1] == '1'){
                         cout << "base" << endl;
-                    }
-                    // will be pc if not base
-                    else{
-                        val = fourHex(addHex(disp, addHex(addr,to_string(format))));
-                        cout << disp << " " << addr << " " << addHex(addr, to_string(format)) << endl;
-                        if(symbols.find(val) != symbols.end()){
+                        val = fourHex(addHex(disp, registers['B']));
+                        if (symbols.find(val) != symbols.end()){
                             val = symbols[val];
+                        }
+                        else if (lits_name.find(val) != lits_name.end()){
+                            if (lits_name[val].empty()){
+                                val = lits_val[val];
+                            }
+                            else    val = lits_name[val];
                         }
                         else{
                             val = to_string(hexToDec(disp));
                         }
 
+                    }
+                    // will be pc if not base
+                    else{
+                        val = fourHex(addHex(disp, addHex(addr, to_string(format))));
+                        cout << "disp: " << disp << " addr: " << addr << endl;
+                        cout << "TA: " << target_address << endl;
+                        if(symbols.find(val) != symbols.end()){
+                            val = symbols[val];
+                        }
+                        else if (lits_name.find(val) != lits_name.end()){
+                            if (lits_name[val].empty()){
+                                val = lits_val[val];
+                            }
+                            else    val = lits_name[val];
+                        }
+                        else{
+                            val = to_string(hexToDec(disp));
+                        }
                     }
                     if(addressing_type == 3){
                         val = "@" + val;
@@ -595,7 +623,7 @@ map<string, string*> addLiterals(map<string, string*> lit, string sym){
             }
 
             
-            cout << hex_address << ": " << name << " " << lit_s << endl;
+            // cout << hex_address << ": " << name << " " << lit_s << endl;
             lits_name[hex_address] = name;
             lits_val[hex_address] = lit_s;
             string x(*arr);
@@ -752,7 +780,8 @@ string binToHex(string bin){
 
 string fourHex(string hex){
     while(hex.length() < 4){
-        hex = "0" + hex;
+        //if (negHex(hex) < 0)    hex = "F"+hex;
+        hex = "0"+hex;
     }
 
     return hex;
@@ -785,6 +814,15 @@ string subHex(string hex, int val){
     output = decToHex(val);
 
     return output;
+}
+
+// add hex's together, keeps the same length (bigger of the two if they are diff lengths)
+string addHex2(string hex1, string hex2){
+    int num;
+
+    num = negHex(hex1) + negHex(hex1);
+
+    return fourHex(decToHex(num));
 }
 
 //EOF
