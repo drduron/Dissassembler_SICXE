@@ -321,7 +321,10 @@ string text(string line, map<string, string> symbols, map<string, string*> lits)
                 }
                 // get the val
                 val = "\t";
-                
+                // not sure why clear is always clear tho
+                if (operation == "CLEAR"){
+                    val = "A";
+                }
             }
             else{
                 // check the e bit, if 1 format 4, otherwise format 3
