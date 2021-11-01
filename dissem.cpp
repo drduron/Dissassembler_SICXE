@@ -404,6 +404,7 @@ string text(string line, map<string, string> symbols, map<string, string*> lits)
                     if(bin[1] == '1'){
                         cout << "base" << endl;
                         val = fourHex(addHex(disp, registers['B']));
+
                         if (symbols.find(val) != symbols.end()){
                             val = symbols[val];
                         }
@@ -423,6 +424,12 @@ string text(string line, map<string, string> symbols, map<string, string*> lits)
                         val = fourHex(addHex(disp, addHex(addr, to_string(format))));
                         cout << "disp: " << disp << " addr: " << addr << endl;
                         cout << "TA: " << target_address << endl;
+
+                        // check for indexing addressing
+                        if (addressing_type == 2){
+                            val = fourHex(addHex(val,registers['X']));
+                        }
+
                         if(symbols.find(val) != symbols.end()){
                             val = symbols[val];
                         }
@@ -438,6 +445,9 @@ string text(string line, map<string, string> symbols, map<string, string*> lits)
                     }
                     if(addressing_type == 3){
                         val = "@" + val;
+                    }
+                    else if (addressing_type == 2){
+                        val.append(",X");
                     }
                     else if (addressing_type == 4){
                         val = "#" + val;
@@ -658,14 +668,16 @@ Output:         An array of chars that are a hex representation
 string addHex(string operand1, string operand2){
     int op1 = hexToDec(operand1);
     int op2 = hexToDec(operand2);
+    string output;
+    string s;
 
     //cout << op1 << " " << op2 << endl;
 
     op1 = op1 + op2;
 
-    //cout << op1 << endl;
+    output = decToHex(op1);
 
-    return decToHex(op1);
+    return output;
 }
 
 // convert hex into an int
